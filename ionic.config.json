@@ -1,0 +1,8 @@
+{
+  "name": "Sensors",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "vue-vite",
+  "id": "c65f70af"
+}

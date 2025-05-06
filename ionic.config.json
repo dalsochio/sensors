@@ -1,8 +1,7 @@
 {
-  "name": "Sensors",
+  "name": "sensores-app",
   "integrations": {
     "capacitor": {}
   },
-  "type": "vue-vite",
-  "id": "c65f70af"
+  "type": "vue-vite"
 }

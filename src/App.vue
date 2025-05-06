@@ -18,5 +18,6 @@
 </template>
 
 <script setup>
+// importando componentes do ionic para a barra de navegação
 import { IonApp, IonTabs, IonTabBar, IonTabButton, IonLabel, IonRouterOutlet } from '@ionic/vue';
 </script>

@@ -6,13 +6,13 @@
       </ion-toolbar>
     </ion-header>
     <ion-content class="ion-padding">
-      <!-- Indicador de carregamento inicial -->
+      <!-- indicador de carregamento inicial -->
       <div v-if="inicializando" class="loading-container">
         <ion-spinner name="circular"></ion-spinner>
         <p>Carregando recursos...</p>
       </div>
       
-      <!-- Conteúdo principal -->
+      <!-- conteúdo principal -->
       <ion-card v-else>
         <ion-card-header>
           <ion-card-title>Microfone</ion-card-title>
@@ -20,12 +20,12 @@
         <ion-card-content>
           <div style="display: flex; gap: 8px; margin-bottom: 12px;">
             <ion-button size="small" :fill="modoMicrofone === 'navigator' ? 'solid' : 'outline'"
-              @click="modoMicrofone = 'navigator'" :disabled="!isWebPlatform()">NAVIGATOR API</ion-button>
+              @click="modoMicrofone = 'navigator'" :disabled="!isWebPlatform">NAVIGATOR API</ion-button>
             <ion-button size="small" :fill="modoMicrofone === 'capacitor' ? 'solid' : 'outline'"
-              @click="modoMicrofone = 'capacitor'" :disabled="!isNativePlatform()">CAPACITOR</ion-button>
+              @click="modoMicrofone = 'capacitor'" :disabled="isWebPlatform">CAPACITOR</ion-button>
           </div>
           
-          <!-- Navigator API (PWA) -->
+          <!-- navigator api (pwa) -->
           <div v-if="modoMicrofone === 'navigator'">
             <div v-if="microfoneSuportado">
               <label style="font-size: 0.9em; color: white; display: block; background-color: red; padding: 4px; border-radius: 4px; width: fit-content; margin-bottom: 10px;">EM TEMPO REAL</label>
@@ -42,16 +42,16 @@
                 style="width: 100%; margin-top: 8px;"></audio>
             </div>
             <div v-else>
-              <ion-button size="small" @click="ativarMicrofone">ATIVAR MICROFONE</ion-button>
+              <ion-button size="small" @click="pedirPermissaoMicrofoneWeb().then(permitido => permitido && lerMicrofone())">ATIVAR MICROFONE</ion-button>
               <pre>{{ microfoneMensagem }}</pre>
             </div>
           </div>
           
-          <!-- Capacitor API (Native) -->
+          <!-- capacitor api (native) -->
           <div v-else>
             <ion-button size="small" @click="gravarMicrofoneCapacitor">GRAVAR ÁUDIO (CAPACITOR)</ion-button>
             <div v-if="audioCapacitorUrl" style="margin-top: 12px;">
-              <!-- Controles de áudio personalizados -->
+              <!-- controles de áudio personalizados -->
               <div class="audio-player">
                 <div class="audio-info">
                   <div class="audio-time">
@@ -86,7 +86,7 @@
         </ion-card-content>
       </ion-card>
       
-      <!-- Mensagem de erro global -->
+      <!-- mensagem de erro global -->
       <ion-card v-if="erroFatal" color="danger">
         <ion-card-header>
           <ion-card-title>Erro</ion-card-title>
@@ -108,11 +108,11 @@ import { MediaCapture } from '@awesome-cordova-plugins/media-capture';
 import { Filesystem } from '@capacitor/filesystem';
 import { Media } from '@awesome-cordova-plugins/media';
 
-// Estado de inicialização
+// estado de inicialização
 const inicializando = ref(true);
 const erroFatal = ref(null);
 
-// Estado do microfone
+// estado do microfone
 const micCanvasRef = ref(null);
 const microfoneSuportado = ref(false);
 const microfoneStream = ref(null);
@@ -128,16 +128,19 @@ let micSource = null;
 let micAnimationId = null;
 const modoMicrofone = ref('navigator');
 const audioCapacitorUrl = ref(null);
-// Referência para o objeto Media
+// referência para o objeto media
 let mediaAudio = null;
-// Estado de reprodução do áudio
+// estado de reprodução do áudio
 const audioPlaying = ref(false);
 const audioDuration = ref(0);
 const audioPosition = ref(0);
-// Timer para atualizar a posição de reprodução
+// timer para atualizar a posição de reprodução
 let positionTimer = null;
 
-// Função auxiliar para verificar APIs do navegador
+// verificação de plataforma
+const isWebPlatform = computed(() => Capacitor.getPlatform() === 'web');
+
+// verifica se api de mídia está disponível
 function isNavigatorMediaDevicesAvailable() {
   return typeof window !== 'undefined' && 
          !!window.navigator && 
@@ -145,24 +148,17 @@ function isNavigatorMediaDevicesAvailable() {
          !!window.navigator.mediaDevices.getUserMedia;
 }
 
-// Reinicia o componente após um erro
+// reinicia após um erro
 function reiniciarComponente() {
-  // Limpar o erro
   erroFatal.value = null;
   inicializando.value = true;
-  
-  // Limpar todos os recursos atuais
   limparRecursos();
-  
-  // Reiniciar o componente
   inicializarComponente();
 }
 
-// Função para limpar todos os recursos
+// limpa todos os recursos usados
 function limparRecursos() {
-  console.log('Limpando recursos...');
-  
-  // Limpar recursos do modo Navigator (web)
+  // limpa recursos do modo navigator
   if (microfoneStream.value) {
     try {
       microfoneStream.value.getTracks().forEach(track => track.stop());
@@ -204,7 +200,7 @@ function limparRecursos() {
     }
   }
   
-  // Limpar recursos do modo Capacitor (nativo)
+  // limpa recursos do modo capacitor
   if (positionTimer) {
     try {
       clearInterval(positionTimer);
@@ -223,7 +219,7 @@ function limparRecursos() {
     }
   }
   
-  // Limpar estados
+  // limpa estados
   microfoneChunks.value = [];
   microfoneGravando.value = false;
   audioCapacitorUrl.value = null;
@@ -231,41 +227,15 @@ function limparRecursos() {
   audioPosition.value = 0;
   audioPlaying.value = false;
   microfoneMensagem.value = '';
-  
-  console.log('Recursos limpos com sucesso');
 }
 
-function isAndroid() {
-  return Capacitor.getPlatform() === 'android';
-}
-
-// Função auxiliar para determinar se window.cordova está disponível
+// verifica se cordova está disponível (necessário para mídia nativa)
 function isCordovaAvailable() {
   return typeof window !== 'undefined' && !!(window.cordova);
 }
 
-// Função segura para verificar se navigator está disponível
-function isNavigatorAvailable() {
-  return typeof window !== 'undefined' && !!window.navigator;
-}
-
-// Função segura para verificar se mediaDevices está disponível
-function isMediaDevicesAvailable() {
-  return isNavigatorAvailable() && !!window.navigator.mediaDevices;
-}
-
-// Funções auxiliares de verificação
-function isWebPlatform() {
-  return Capacitor.getPlatform() === 'web';
-}
-
-function isNativePlatform() {
-  return !isWebPlatform();
-}
-
-// Solicitar permissão do microfone no navegador
+// pede permissão para o microfone no navegador
 async function pedirPermissaoMicrofoneWeb() {
-  // Esta função deve ser usada apenas no modo "navigator" (web)
   if (!isNavigatorMediaDevicesAvailable()) {
     microfoneMensagem.value = 'API de mídia não disponível neste navegador.';
     return false;
@@ -284,16 +254,7 @@ async function pedirPermissaoMicrofoneWeb() {
   }
 }
 
-// Ativar o microfone no modo web
-async function ativarMicrofone() {
-  const permitido = await pedirPermissaoMicrofoneWeb();
-  if (!permitido) {
-    return;
-  }
-  lerMicrofone();
-}
-
-// Função para desenhar a barra de volume com o áudio do microfone
+// desenha a barra de volume
 function desenharBarraVolume() {
   if (!micCanvasRef.value || !micAnalyser || !micDataArray) return;
   
@@ -304,16 +265,16 @@ function desenharBarraVolume() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     
-    // Solicita o próximo frame antes do processamento para manter a taxa de frames
+    // solicita o próximo frame
     micAnimationId = requestAnimationFrame(desenharBarraVolume);
     
-    // Obter os dados do analisador
+    // obtém dados do analisador
     micAnalyser.getByteFrequencyData(micDataArray);
     
-    // Limpar o canvas
+    // limpa o canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Calcular o volume baseado nos dados de frequência
+    // calcula o volume médio
     let sum = 0;
     const len = micDataArray.length;
     
@@ -323,27 +284,27 @@ function desenharBarraVolume() {
     
     const average = sum / len;
     
-    // Normalizar o volume (0-255) para a largura do canvas (0-100%)
+    // normaliza o volume para a largura do canvas
     const volumePercent = average / 255;
     const barWidth = Math.max(5, volumePercent * canvas.width);
     
-    // Desenhar o fundo da barra
+    // desenha o fundo
     ctx.fillStyle = '#eaeaea';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     
-    // Escolher cor baseada no volume
+    // escolhe a cor baseada no volume
     if (volumePercent < 0.3) {
-      ctx.fillStyle = '#3880ff'; // Azul para volumes baixos
+      ctx.fillStyle = '#3880ff'; // azul para volume baixo
     } else if (volumePercent < 0.7) {
-      ctx.fillStyle = '#ffb74d'; // Laranja para volumes médios
+      ctx.fillStyle = '#ffb74d'; // laranja para volume médio
     } else {
-      ctx.fillStyle = '#f44336'; // Vermelho para volumes altos
+      ctx.fillStyle = '#f44336'; // vermelho para volume alto
     }
     
-    // Desenhar a barra de volume
+    // desenha a barra de volume
     ctx.fillRect(0, 0, barWidth, canvas.height);
     
-    // Adicionar um pequeno brilho para melhorar a aparência
+    // adiciona brilho
     const grd = ctx.createLinearGradient(0, 0, 0, canvas.height);
     grd.addColorStop(0, 'rgba(255, 255, 255, 0.3)');
     grd.addColorStop(1, 'rgba(255, 255, 255, 0)');
@@ -353,7 +314,6 @@ function desenharBarraVolume() {
   } catch (e) {
     console.error('Erro ao desenhar barra de volume:', e);
     
-    // Em caso de erro, tente cancelar a animação e evitar travamentos
     if (micAnimationId) {
       cancelAnimationFrame(micAnimationId);
       micAnimationId = null;
@@ -361,7 +321,7 @@ function desenharBarraVolume() {
   }
 }
 
-// Inicializar leitura do microfone no navegador
+// inicializa o microfone no navegador
 function lerMicrofone() {
   if (!isNavigatorMediaDevicesAvailable()) {
     microfoneSuportado.value = false;
@@ -371,7 +331,7 @@ function lerMicrofone() {
   
   microfoneSuportado.value = true;
   
-  // Limpar recursos existentes para evitar duplicação
+  // limpa recursos existentes
   if (microfoneStream.value) {
     try {
       microfoneStream.value.getTracks().forEach(track => track.stop());
@@ -393,7 +353,7 @@ function lerMicrofone() {
     }
   }
   
-  // Solicitar acesso ao microfone
+  // solicita acesso ao microfone
   window.navigator.mediaDevices.getUserMedia({ 
     audio: {
       echoCancellation: true,
@@ -402,12 +362,11 @@ function lerMicrofone() {
     } 
   })
   .then((stream) => {
-    console.log('Microfone acessado com sucesso');
     microfoneStream.value = stream;
     microfoneMensagem.value = 'Microfone acessível.';
     
     try {
-      // Configurar o contexto de áudio
+      // configura o contexto de áudio
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
       if (!AudioContextClass) {
         microfoneMensagem.value = 'AudioContext não suportado neste navegador.';
@@ -416,34 +375,30 @@ function lerMicrofone() {
       
       micAudioContext = new AudioContextClass();
       
-      // Se o contexto estiver suspenso (política de autoplay), tente retomá-lo
+      // se o contexto estiver suspenso, tenta retomá-lo
       if (micAudioContext.state === 'suspended') {
         micAudioContext.resume();
       }
       
-      // Criar analisador otimizado para visualização
+      // cria analisador otimizado para visualização
       micAnalyser = micAudioContext.createAnalyser();
-      micAnalyser.fftSize = 256; // Valor menor = menos dados, mais eficiente
-      micAnalyser.smoothingTimeConstant = 0.6; // Suavização para evitar saltos bruscos
+      micAnalyser.fftSize = 256; // valor menor = menos dados, mais eficiente
+      micAnalyser.smoothingTimeConstant = 0.6; // suavização para evitar saltos
       
-      // Conectar a fonte de mídia ao analisador
+      // conecta a fonte ao analisador
       micSource = micAudioContext.createMediaStreamSource(stream);
       micSource.connect(micAnalyser);
       
-      // Criar array para os dados de frequência
+      // cria array para os dados de frequência
       micDataArray = new Uint8Array(micAnalyser.frequencyBinCount);
       
-      // Iniciar desenho após criação do contexto
+      // inicia o desenho
       nextTick(() => {
         if (micCanvasRef.value && micCanvasRef.value instanceof HTMLCanvasElement) {
-          console.log('Iniciando visualização do microfone');
           desenharBarraVolume();
-        } else {
-          console.error('Canvas do microfone não encontrado');
         }
       });
     } catch (e) {
-      console.error('Erro ao configurar análise de áudio:', e);
       microfoneMensagem.value = 'Erro ao processar áudio: ' + e.message;
     }
   })
@@ -456,18 +411,16 @@ function lerMicrofone() {
     } else {
       microfoneMensagem.value = 'Erro ao acessar o microfone: ' + err.message;
     }
-    console.error('Erro ao acessar microfone:', err);
   });
 }
 
-// Iniciar gravação no navegador
+// inicia gravação no navegador
 function gravarMicrofone() {
   if (!microfoneStream.value) {
     microfoneMensagem.value = 'Microfone não inicializado.';
     return;
   }
   
-  // Verificar se MediaRecorder existe
   if (typeof MediaRecorder === 'undefined') {
     microfoneMensagem.value = 'MediaRecorder não suportado neste navegador.';
     return;
@@ -477,24 +430,21 @@ function gravarMicrofone() {
     microfoneChunks.value = [];
     const options = { mimeType: 'audio/webm' };
     
-    // Tenta criar com o tipo preferido, ou cai para o padrão se não for suportado
+    // tenta criar com o tipo preferido
     try {
       microfoneRecorder.value = new MediaRecorder(microfoneStream.value, options);
     } catch (e) {
-      console.warn('O tipo audio/webm não é suportado, usando padrão', e);
       microfoneRecorder.value = new MediaRecorder(microfoneStream.value);
     }
     
-    // Configurar os handlers de eventos
+    // configura os handlers de eventos
     microfoneRecorder.value.addEventListener('dataavailable', (e) => {
-      console.log('Dados de áudio disponíveis:', e.data.size);
       if (e.data && e.data.size > 0) {
         microfoneChunks.value.push(e.data);
       }
     });
     
     microfoneRecorder.value.addEventListener('stop', () => {
-      console.log('Gravação parada, processando chunks:', microfoneChunks.value.length);
       if (typeof Blob === 'undefined' || typeof URL === 'undefined') {
         microfoneMensagem.value = 'API de Blob ou URL não suportada neste navegador.';
         return;
@@ -508,7 +458,7 @@ function gravarMicrofone() {
       const mimeType = microfoneRecorder.value.mimeType || 'audio/webm';
       const blob = new Blob(microfoneChunks.value, { type: mimeType });
       
-      // Revogar URL antigo se existir
+      // revoga url antigo se existir
       if (microfoneGravacaoUrl.value) {
         URL.revokeObjectURL(microfoneGravacaoUrl.value);
       }
@@ -517,41 +467,30 @@ function gravarMicrofone() {
       microfoneMensagem.value = 'Gravação finalizada com sucesso!';
     });
     
-    // Iniciar a gravação com timeout de 10 segundos por segurança
+    // inicia a gravação
     microfoneRecorder.value.start();
     microfoneGravando.value = true;
-    
-    console.log('Gravação iniciada com sucesso');
   } catch (error) {
-    console.error('Erro ao gravar áudio:', error);
     microfoneMensagem.value = 'Erro ao iniciar gravação: ' + error.message;
   }
 }
 
-// Parar gravação no navegador
+// para gravação no navegador
 function pararGravacaoMicrofone() {
-  if (!microfoneRecorder.value) {
-    console.error('Tentativa de parar gravação sem um gravador inicializado');
-    return;
-  }
-  
-  if (!microfoneGravando.value) {
-    console.warn('Tentativa de parar gravação quando não está gravando');
+  if (!microfoneRecorder.value || !microfoneGravando.value) {
     return;
   }
   
   try {
-    console.log('Parando gravação do microfone');
     microfoneRecorder.value.stop();
     microfoneGravando.value = false;
   } catch (error) {
-    console.error('Erro ao parar gravação:', error);
     microfoneMensagem.value = 'Erro ao finalizar gravação: ' + error.message;
     microfoneGravando.value = false;
   }
 }
 
-// Apagar gravação no navegador
+// apaga gravação no navegador
 function apagarGravacaoMicrofone() {
   if (microfoneGravacaoUrl.value && typeof URL !== 'undefined') {
     URL.revokeObjectURL(microfoneGravacaoUrl.value);
@@ -560,11 +499,9 @@ function apagarGravacaoMicrofone() {
   microfoneChunks.value = [];
 }
 
-// === FUNÇÕES DA CAPACITOR API (NATIVO) ===
-
-// Gravar áudio usando Capacitor (apenas para dispositivos nativos)
+// grava áudio usando capacitor (dispositivos nativos)
 async function gravarMicrofoneCapacitor() {
-  if (isWebPlatform()) {
+  if (isWebPlatform.value) {
     microfoneMensagem.value = 'A gravação nativa só está disponível no app instalado (Android/iOS).';
     return;
   }
@@ -575,65 +512,56 @@ async function gravarMicrofoneCapacitor() {
       duration: 10 
     };
     
-    // MediaCapture.captureAudio já solicita permissão automaticamente
+    // solicita permissão automaticamente
     const files = await MediaCapture.captureAudio(options);
     
     if (files && files.length > 0) {
       try {
-        // Armazenar o caminho original para referência
         const filePath = files[0].fullPath;
         
-        // Limpar reprodução anterior
+        // limpa reprodução anterior
         if (mediaAudio) {
           mediaAudio.release();
           mediaAudio = null;
         }
         
-        // Limpar o timer de posição se estiver ativo
         if (positionTimer) {
           clearInterval(positionTimer);
           positionTimer = null;
         }
         
-        // Armazenar o URL para referência
         audioCapacitorUrl.value = filePath;
         
-        // Criar o objeto Media para reprodução nativa
+        // cria o objeto media para reprodução nativa
         if (isCordovaAvailable()) {
           try {
             mediaAudio = Media.create(filePath);
             
-            // Configurar callbacks de status
+            // configura callbacks de status
             mediaAudio.onStatusUpdate.subscribe(status => {
-              console.log('Status de áudio alterado:', status);
               audioPlaying.value = status === 2; // MEDIA_RUNNING
             });
             
             mediaAudio.onSuccess.subscribe(() => {
-              console.log('Reprodução de áudio finalizada com sucesso');
               audioPlaying.value = false;
             });
             
             mediaAudio.onError.subscribe(error => {
-              console.error('Erro na reprodução de áudio:', error);
               microfoneMensagem.value = 'Erro na reprodução: ' + error;
               audioPlaying.value = false;
             });
             
-            // Obter duração - usando método direto, não como Promise
+            // tenta obter a duração
             try {
-              // A duração pode não estar disponível imediatamente
               let durationAttempts = 0;
               const checkDuration = () => {
                 try {
                   const duration = mediaAudio.getDuration();
-                  console.log('Tentativa de obter duração:', duration);
                   
                   if (duration > 0) {
                     audioDuration.value = duration;
                     return true;
                   } else if (durationAttempts++ < 5) {
-                    // Tentar novamente após um segundo
                     setTimeout(checkDuration, 1000);
                     return false;
                   }
@@ -643,7 +571,6 @@ async function gravarMicrofoneCapacitor() {
                 return false;
               };
               
-              // Iniciar verificações
               checkDuration();
             } catch (durationError) {
               console.error('Erro ao tentar obter duração:', durationError);
@@ -651,7 +578,6 @@ async function gravarMicrofoneCapacitor() {
             
             microfoneMensagem.value = 'Áudio gravado com sucesso: ' + filePath;
           } catch (mediaError) {
-            console.error('Erro ao criar objeto Media:', mediaError);
             microfoneMensagem.value = 'Erro ao criar reprodutor: ' + mediaError;
           }
         } else {
@@ -659,7 +585,6 @@ async function gravarMicrofoneCapacitor() {
         }
       } catch (processError) {
         microfoneMensagem.value = 'Erro ao processar arquivo: ' + processError;
-        console.error('Erro ao processar arquivo:', processError);
       }
     } else {
       microfoneMensagem.value = 'Nenhum áudio gravado.';
@@ -667,43 +592,37 @@ async function gravarMicrofoneCapacitor() {
   } catch (e) {
     const erro = String(e);
     
-    // Verifica se o erro é de permissão
     if (erro.includes('permission') || erro.includes('PERMISSION')) {
       microfoneMensagem.value = 'Permissão de microfone negada. Verifique as configurações do aplicativo.';
     } else if (erro.includes('cancel') || erro.includes('CANCEL')) {
       microfoneMensagem.value = 'Gravação cancelada pelo usuário.';
     } else {
       microfoneMensagem.value = 'Erro ao gravar áudio: ' + erro;
-      console.error('Erro de captura:', e);
     }
   }
 }
 
-// Função para reproduzir áudio usando Media nativo
+// reproduz áudio usando media nativo
 function reproduzirAudio() {
   if (mediaAudio) {
     try {
       mediaAudio.play();
       audioPlaying.value = true;
       
-      // Limpar timer anterior se existir
       if (positionTimer) {
         clearInterval(positionTimer);
       }
       
-      // Atualizar posição periodicamente
+      // atualiza posição periodicamente
       positionTimer = setInterval(() => {
         if (mediaAudio) {
           try {
-            // Obter posição diretamente, não como Promise
             mediaAudio.getCurrentPosition(
-              // Callback de sucesso
               (position) => {
                 if (position >= 0) {
                   audioPosition.value = position;
                 }
               },
-              // Callback de erro
               (posError) => {
                 console.error('Erro ao obter posição:', posError);
               }
@@ -712,13 +631,11 @@ function reproduzirAudio() {
             console.error('Exceção ao obter posição:', posError);
           }
         } else {
-          // Limpar o timer se o objeto Media não existir mais
           clearInterval(positionTimer);
           positionTimer = null;
         }
       }, 500);
     } catch (playError) {
-      console.error('Erro ao iniciar reprodução:', playError);
       microfoneMensagem.value = 'Erro ao reproduzir: ' + playError;
     }
   } else {
@@ -726,20 +643,19 @@ function reproduzirAudio() {
   }
 }
 
-// Função para pausar áudio nativo
+// pausa áudio nativo
 function pausarAudio() {
   if (mediaAudio) {
     try {
       mediaAudio.pause();
       audioPlaying.value = false;
     } catch (pauseError) {
-      console.error('Erro ao pausar:', pauseError);
       microfoneMensagem.value = 'Erro ao pausar: ' + pauseError;
     }
   }
 }
 
-// Função para parar áudio nativo
+// para áudio nativo
 function pararAudio() {
   if (mediaAudio) {
     try {
@@ -747,21 +663,18 @@ function pararAudio() {
       audioPlaying.value = false;
       audioPosition.value = 0;
     } catch (stopError) {
-      console.error('Erro ao parar:', stopError);
       microfoneMensagem.value = 'Erro ao parar: ' + stopError;
     }
   }
 }
 
-// Remover áudio no modo nativo
+// remove áudio no modo nativo
 function removerAudioCapacitor() {
-  // Limpar timer de posição
   if (positionTimer) {
     clearInterval(positionTimer);
     positionTimer = null;
   }
   
-  // Liberar objeto Media
   if (mediaAudio) {
     try {
       mediaAudio.release();
@@ -771,7 +684,6 @@ function removerAudioCapacitor() {
     mediaAudio = null;
   }
   
-  // Limpar os dados
   audioCapacitorUrl.value = null;
   audioDuration.value = 0;
   audioPosition.value = 0;
@@ -779,7 +691,7 @@ function removerAudioCapacitor() {
   microfoneMensagem.value = 'Áudio removido com sucesso.';
 }
 
-// Função para formatar o tempo em minutos:segundos
+// formata o tempo em minutos:segundos
 function formatTime(seconds) {
   if (!seconds || seconds < 0) return '0:00';
   const mins = Math.floor(seconds / 60);
@@ -787,57 +699,39 @@ function formatTime(seconds) {
   return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
-// Inicializar o componente com tratamento de erros
+// inicializa o componente
 async function inicializarComponente() {
   try {
-    console.log('Inicializando componente de microfone');
-    
-    // Detectar a plataforma corretamente
     const plataforma = Capacitor.getPlatform();
-    console.log('Plataforma detectada:', plataforma);
     
-    // Configurar ambiente básico
     microfoneSuportado.value = false;
     
-    // Escolher o modo correto com base na plataforma
     if (plataforma === 'web') {
-      console.log('Executando como PWA/web');
-      modoMicrofone.value = 'navigator'; // PWA deve usar Navigator API
+      modoMicrofone.value = 'navigator'; // pwa usa navigator api
       
-      // Verificar se a API de mídia está disponível no navegador
       if (isNavigatorMediaDevicesAvailable()) {
-        console.log('Navigator API disponível no browser');
         microfoneSuportado.value = true;
-        
-        // Iniciar automaticamente o microfone na web
         lerMicrofone();
       } else {
-        console.log('Navigator API indisponível no browser');
         microfoneMensagem.value = 'Este navegador não suporta acesso ao microfone.';
       }
     } else {
-      console.log('Executando como aplicativo nativo em:', plataforma);
-      modoMicrofone.value = 'capacitor'; // Dispositivos nativos devem usar Capacitor API
+      modoMicrofone.value = 'capacitor'; // dispositivos nativos usam capacitor api
     }
     
-    console.log('Modo selecionado:', modoMicrofone.value);
-    console.log('Inicialização concluída');
     inicializando.value = false;
   } catch (e) {
-    console.error('Erro fatal na inicialização:', e);
     erroFatal.value = 'Erro ao inicializar: ' + e.message;
     inicializando.value = false;
   }
 }
 
-// Ciclo de vida do componente
+// ciclo de vida do componente
 onMounted(() => {
-  console.log('Componente de microfone montado');
   inicializarComponente();
 });
 
 onUnmounted(() => {
-  console.log('Componente de microfone desmontado');
   limparRecursos();
 });
 </script>

@@ -35,12 +35,13 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonSpinner, IonButton } from '@ionic/vue';
 import { Geolocation } from '@capacitor/geolocation';
 import { Device } from '@capacitor/device';
 import { Network } from '@capacitor/network';
 
+// lista de sensores disponíveis
 const sensores = ref([
   { nome: 'Acelerômetro', valor: undefined },
   { nome: 'Giroscópio', valor: undefined },
@@ -52,14 +53,16 @@ const sensores = ref([
   { nome: 'Bateria', valor: undefined },
 ]);
 
+// variáveis para armazenar event listeners
 let acelerometroInterval = null;
 let giroscopioInterval = null;
-let magnetometroInterval = null;
 let orientacaoListener = null;
 let bateriaListener = null;
 
-function lerAcelerometro() {
+// função para ler dados do acelerômetro e giroscópio
+function lerMovimento() {
   if ('DeviceMotionEvent' in window) {
+    // configura acelerômetro
     acelerometroInterval = (event) => {
       sensores.value[0].valor = JSON.stringify({
         x: event.acceleration?.x,
@@ -68,13 +71,8 @@ function lerAcelerometro() {
       }, null, 2);
     };
     window.addEventListener('devicemotion', acelerometroInterval);
-  } else {
-    sensores.value[0].valor = 'Não suportado neste dispositivo.';
-  }
-}
 
-function lerGiroscopio() {
-  if ('DeviceMotionEvent' in window) {
+    // configura giroscópio usando o mesmo evento
     giroscopioInterval = (event) => {
       sensores.value[1].valor = JSON.stringify({
         alpha: event.rotationRate?.alpha,
@@ -84,25 +82,37 @@ function lerGiroscopio() {
     };
     window.addEventListener('devicemotion', giroscopioInterval);
   } else {
+    sensores.value[0].valor = 'Não suportado neste dispositivo.';
     sensores.value[1].valor = 'Não suportado neste dispositivo.';
   }
 }
 
-function lerMagnetometro() {
-  if ('ondeviceorientationabsolute' in window || 'ondeviceorientation' in window) {
-    magnetometroInterval = (event) => {
+// função para ler orientação e magnetômetro
+function lerOrientacao() {
+  if ('ondeviceorientation' in window) {
+    orientacaoListener = (event) => {
+      // atualiza magnetômetro com os dados de orientação
       sensores.value[2].valor = JSON.stringify({
         alpha: event.alpha,
         beta: event.beta,
         gamma: event.gamma
       }, null, 2);
+      
+      // atualiza orientação com os mesmos dados
+      sensores.value[6].valor = JSON.stringify({
+        alpha: event.alpha,
+        beta: event.beta,
+        gamma: event.gamma
+      }, null, 2);
     };
-    window.addEventListener('deviceorientation', magnetometroInterval);
+    window.addEventListener('deviceorientation', orientacaoListener);
   } else {
     sensores.value[2].valor = 'Não suportado neste dispositivo.';
+    sensores.value[6].valor = 'Não suportado neste dispositivo.';
   }
 }
 
+// função para ler informações do dispositivo
 async function lerInfoDispositivo() {
   try {
     const info = await Device.getInfo();
@@ -112,6 +122,7 @@ async function lerInfoDispositivo() {
   }
 }
 
+// função para ler status da rede
 async function lerRede() {
   try {
     const status = await Network.getStatus();
@@ -121,6 +132,7 @@ async function lerRede() {
   }
 }
 
+// função para ler localização gps
 async function lerGPS() {
   try {
     const pos = await Geolocation.getCurrentPosition();
@@ -130,21 +142,7 @@ async function lerGPS() {
   }
 }
 
-function lerOrientacao() {
-  if ('ondeviceorientation' in window) {
-    orientacaoListener = (event) => {
-      sensores.value[6].valor = JSON.stringify({
-        alpha: event.alpha,
-        beta: event.beta,
-        gamma: event.gamma
-      }, null, 2);
-    };
-    window.addEventListener('deviceorientation', orientacaoListener);
-  } else {
-    sensores.value[6].valor = 'Não suportado neste dispositivo.';
-  }
-}
-
+// função para ler status da bateria
 function lerBateria() {
   if (navigator.getBattery) {
     navigator.getBattery().then((battery) => {
@@ -164,21 +162,20 @@ function lerBateria() {
   }
 }
 
+// inicializa todos os sensores quando o componente é montado
 onMounted(() => {
-  lerAcelerometro();
-  lerGiroscopio();
-  lerMagnetometro();
+  lerMovimento();
+  lerOrientacao();
   lerInfoDispositivo();
   lerRede();
   lerGPS();
-  lerOrientacao();
   lerBateria();
 });
 
+// remove event listeners quando o componente é desmontado
 onUnmounted(() => {
   if (acelerometroInterval) window.removeEventListener('devicemotion', acelerometroInterval);
   if (giroscopioInterval) window.removeEventListener('devicemotion', giroscopioInterval);
-  if (magnetometroInterval) window.removeEventListener('deviceorientation', magnetometroInterval);
   if (orientacaoListener) window.removeEventListener('deviceorientation', orientacaoListener);
 });
 </script>

@@ -12,33 +12,40 @@
                 </ion-card-header>
                 <ion-card-content>
                     <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                        <ion-button size="small" :fill="modoCamera === 'navigator' ? 'solid' : 'outline'" @click="modoCamera = 'navigator'">NAVIGATOR API</ion-button>
-                        <ion-button size="small" :fill="modoCamera === 'capacitor' ? 'solid' : 'outline'" @click="modoCamera = 'capacitor'">CAPACITOR</ion-button>
+                        <ion-button size="small" :fill="modoCamera === 'navigator' ? 'solid' : 'outline'"
+                            @click="modoCamera = 'navigator'">NAVIGATOR API</ion-button>
+                        <ion-button size="small" :fill="modoCamera === 'capacitor' ? 'solid' : 'outline'"
+                            @click="modoCamera = 'capacitor'">CAPACITOR</ion-button>
                     </div>
                     <div v-if="modoCamera === 'navigator'">
                         <div v-if="cameraSuportada">
                             <div v-if="cameraStream" style="margin-bottom: 8px;">
-                                <label style="font-size: 0.9em; color: white; display: block; background-color: red; padding: 4px; border-radius: 4px; width: fit-content; margin-bottom: 10px;">EM TEMPO REAL</label>
+                                <label
+                                    style="font-size: 0.9em; color: white; display: block; background-color: red; padding: 4px; border-radius: 4px; width: fit-content; margin-bottom: 10px;">EM
+                                    TEMPO REAL</label>
                                 <video ref="videoRef" muted autoplay playsinline width="100%"
                                     style="display: block; max-width: 320px; border-radius: 8px; border: 2px solid #3880ff;"></video>
                             </div>
                             <div style="margin-top: 8px;">
                                 <ion-button size="small" @click="gravarCamera"
-                                    :disabled="cameraGravando || !cameraStream">{{ cameraGravando ? 'Gravando...' : 'Gravar'
+                                    :disabled="cameraGravando || !cameraStream">{{ cameraGravando ? 'Gravando...' :
+                                        'Gravar'
                                     }}</ion-button>
                                 <ion-button size="small" @click="pararGravacaoCamera"
                                     :disabled="!cameraGravando">Parar</ion-button>
-                                <ion-button size="small" @click="apagarGravacaoCamera" color="danger" v-if="cameraGravacaoUrl">Remover
-                                    gravação</ion-button>
                             </div>
                             <div v-if="cameraGravacaoUrl" style="margin-top: 12px;">
-                                <label style="font-size: 0.9em; color: #666;">Gravação</label>
+                                <label
+                                    style="font-size: 0.9em; color: #666; display: block; margin-bottom: 10px;">Gravação:</label>
                                 <video :src="cameraGravacaoUrl" controls
-                                    style="width: 100%; max-width: 320px; border-radius: 8px;"></video>
+                                    style="width: 100%; max-width: 320px; border-radius: 8px; display: block;"></video>
+                                <ion-button style="width: 320px; display: block; margin-top: 10px;" size="small"
+                                    @click="apagarGravacaoCamera" color="danger" v-if="cameraGravacaoUrl">Remover
+                                    gravação</ion-button>
                             </div>
                         </div>
                         <div v-else>
-                            <ion-button size="small" @click="ativarCamera">Ativar câmera</ion-button>
+                            <ion-button size="small" @click="lerCamera">Ativar câmera</ion-button>
                             <pre>{{ cameraMensagem }}</pre>
                         </div>
                     </div>
@@ -47,7 +54,8 @@
                         <div v-if="fotoCapacitorUrl" style="margin-top: 12px;">
                             <img :src="fotoCapacitorUrl" style="width: 100%; max-width: 320px; border-radius: 8px;" />
                             <div style="margin-top: 8px;">
-                                <ion-button size="small" color="danger" @click="removerFotoCapacitor">Remover foto</ion-button>
+                                <ion-button size="small" style="width: 320px; display: block; margin-top: 10px;" color="danger" @click="removerFotoCapacitor">Remover
+                                    foto</ion-button>
                             </div>
                         </div>
                     </div>
@@ -62,6 +70,7 @@ import { ref, nextTick, watchEffect, onUnmounted } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonButton } from '@ionic/vue';
 import { Camera } from '@capacitor/camera';
 
+// referências para elementos e estados da câmera
 const videoRef = ref(null);
 const cameraSuportada = ref(false);
 const cameraStream = ref(null);
@@ -73,19 +82,16 @@ const cameraMensagem = ref('');
 const modoCamera = ref('navigator');
 const fotoCapacitorUrl = ref(null);
 
-function ativarCamera() {
-    lerCamera();
-}
-
+// função para inicializar a câmera
 function lerCamera() {
     if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         cameraSuportada.value = true;
-        
-        const constraints = { 
-            video: { facingMode: 'user' }, // Prefira a câmera frontal
-            audio: true 
+
+        const constraints = {
+            video: { facingMode: 'user' }, // prefere a câmera frontal
+            audio: true
         };
-        
+
         navigator.mediaDevices.getUserMedia(constraints)
             .then((stream) => {
                 cameraStream.value = stream;
@@ -117,6 +123,7 @@ function lerCamera() {
     }
 }
 
+// função para iniciar gravação
 function gravarCamera() {
     if (cameraStream.value) {
         cameraChunks.value = [];
@@ -132,20 +139,25 @@ function gravarCamera() {
         cameraGravando.value = true;
     }
 }
+
+// função para parar gravação
 function pararGravacaoCamera() {
     if (cameraRecorder.value && cameraGravando.value) {
         cameraRecorder.value.stop();
         cameraGravando.value = false;
     }
 }
+
+// função para apagar gravação
 function apagarGravacaoCamera() {
     cameraGravacaoUrl.value = null;
     cameraChunks.value = [];
 }
 
+// função para tirar foto usando capacitor
 async function tirarFotoCapacitor() {
     try {
-        // Camera.getPhoto já solicita permissão automaticamente
+        // camera.getphoto já solicita permissão automaticamente
         const image = await Camera.getPhoto({
             quality: 80,
             allowEditing: false,
@@ -154,11 +166,11 @@ async function tirarFotoCapacitor() {
             saveToGallery: true,
             correctOrientation: true
         });
-        
+
         fotoCapacitorUrl.value = image.dataUrl || null;
     } catch (e) {
         const erro = String(e);
-        
+
         if (erro.includes('permission') || erro.includes('PERMISSION')) {
             cameraMensagem.value = 'Permissão de câmera negada. Verifique as configurações do aplicativo.';
         } else if (erro.includes('cancel') || erro.includes('CANCEL')) {
@@ -169,10 +181,12 @@ async function tirarFotoCapacitor() {
     }
 }
 
+// função para remover foto
 function removerFotoCapacitor() {
     fotoCapacitorUrl.value = null;
 }
 
+// limpa recursos da câmera quando o componente é desmontado
 onUnmounted(() => {
     pararGravacaoCamera();
 

@@ -57,21 +57,21 @@
     </ion-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, nextTick, watchEffect, onUnmounted } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonButton } from '@ionic/vue';
 import { Camera } from '@capacitor/camera';
 
-const videoRef = ref<HTMLVideoElement | null>(null);
+const videoRef = ref(null);
 const cameraSuportada = ref(false);
-const cameraStream = ref<MediaStream | null>(null);
-const cameraRecorder = ref<MediaRecorder | null>(null);
-const cameraChunks = ref<Blob[]>([]);
+const cameraStream = ref(null);
+const cameraRecorder = ref(null);
+const cameraChunks = ref([]);
 const cameraGravando = ref(false);
-const cameraGravacaoUrl = ref<string | null>(null);
+const cameraGravacaoUrl = ref(null);
 const cameraMensagem = ref('');
-const modoCamera = ref<'navigator' | 'capacitor'>('navigator');
-const fotoCapacitorUrl = ref<string | null>(null);
+const modoCamera = ref('navigator');
+const fotoCapacitorUrl = ref(null);
 
 function ativarCamera() {
     lerCamera();

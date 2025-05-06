@@ -17,6 +17,6 @@
   </ion-app>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { IonApp, IonTabs, IonTabBar, IonTabButton, IonLabel, IonRouterOutlet } from '@ionic/vue';
 </script>

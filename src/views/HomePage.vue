@@ -34,7 +34,7 @@
   </ion-page>
 </template>
 
-<script setup lang="ts">
+<script setup>
 import { ref, onMounted, onUnmounted, nextTick } from 'vue';
 import { IonPage, IonHeader, IonToolbar, IonTitle, IonContent, IonCard, IonCardHeader, IonCardTitle, IonCardContent, IonSpinner, IonButton } from '@ionic/vue';
 import { Geolocation } from '@capacitor/geolocation';
@@ -52,15 +52,15 @@ const sensores = ref([
   { nome: 'Bateria', valor: undefined },
 ]);
 
-let acelerometroInterval: any = null;
-let giroscopioInterval: any = null;
-let magnetometroInterval: any = null;
-let orientacaoListener: any = null;
-let bateriaListener: any = null;
+let acelerometroInterval = null;
+let giroscopioInterval = null;
+let magnetometroInterval = null;
+let orientacaoListener = null;
+let bateriaListener = null;
 
 function lerAcelerometro() {
   if ('DeviceMotionEvent' in window) {
-    acelerometroInterval = (event: DeviceMotionEvent) => {
+    acelerometroInterval = (event) => {
       sensores.value[0].valor = JSON.stringify({
         x: event.acceleration?.x,
         y: event.acceleration?.y,
@@ -75,7 +75,7 @@ function lerAcelerometro() {
 
 function lerGiroscopio() {
   if ('DeviceMotionEvent' in window) {
-    giroscopioInterval = (event: DeviceMotionEvent) => {
+    giroscopioInterval = (event) => {
       sensores.value[1].valor = JSON.stringify({
         alpha: event.rotationRate?.alpha,
         beta: event.rotationRate?.beta,
@@ -90,7 +90,7 @@ function lerGiroscopio() {
 
 function lerMagnetometro() {
   if ('ondeviceorientationabsolute' in window || 'ondeviceorientation' in window) {
-    magnetometroInterval = (event: DeviceOrientationEvent) => {
+    magnetometroInterval = (event) => {
       sensores.value[2].valor = JSON.stringify({
         alpha: event.alpha,
         beta: event.beta,
@@ -132,7 +132,7 @@ async function lerGPS() {
 
 function lerOrientacao() {
   if ('ondeviceorientation' in window) {
-    orientacaoListener = (event: DeviceOrientationEvent) => {
+    orientacaoListener = (event) => {
       sensores.value[6].valor = JSON.stringify({
         alpha: event.alpha,
         beta: event.beta,
@@ -147,7 +147,7 @@ function lerOrientacao() {
 
 function lerBateria() {
   if (navigator.getBattery) {
-    navigator.getBattery().then((battery: any) => {
+    navigator.getBattery().then((battery) => {
       function atualizarBateria() {
         sensores.value[7].valor = JSON.stringify({
           nivel: battery.level,

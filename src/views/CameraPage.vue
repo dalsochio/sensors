@@ -18,9 +18,9 @@
                     <div v-if="modoCamera === 'navigator'">
                         <div v-if="cameraSuportada">
                             <div v-if="cameraStream" style="margin-bottom: 8px;">
-                                <label style="font-size: 0.9em; color: #666;">Ao vivo</label>
+                                <label style="font-size: 0.9em; color: white; display: block; background-color: red; padding: 4px; border-radius: 4px; width: fit-content; margin-bottom: 10px;">EM TEMPO REAL</label>
                                 <video ref="videoRef" muted autoplay playsinline width="100%"
-                                    style="max-width: 320px; border-radius: 8px; border: 2px solid #3880ff;"></video>
+                                    style="display: block; max-width: 320px; border-radius: 8px; border: 2px solid #3880ff;"></video>
                             </div>
                             <div style="margin-top: 8px;">
                                 <ion-button size="small" @click="gravarCamera"

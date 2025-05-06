@@ -28,6 +28,7 @@
           <!-- Navigator API (PWA) -->
           <div v-if="modoMicrofone === 'navigator'">
             <div v-if="microfoneSuportado">
+              <label style="font-size: 0.9em; color: white; display: block; background-color: red; padding: 4px; border-radius: 4px; width: fit-content; margin-bottom: 10px;">EM TEMPO REAL</label>
               <canvas ref="micCanvasRef" width="250" height="30" style="background: #eee; border-radius: 6px;"></canvas>
               <div style="margin-top: 8px;">
                 <ion-button size="small" @click="gravarMicrofone"
